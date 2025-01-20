@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "imagens-tensorflow",
-    "slug": "imagens-tensorflow",
+    "name": "med-scan",
+    "slug": "med-scan",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
