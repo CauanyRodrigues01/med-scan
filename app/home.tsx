@@ -15,6 +15,7 @@ import { Button } from "@/components/button"; // Botão personalizado
 import { styles } from "@/styles/styleHome"; // Estilos específicos para a página
 import { Classification } from "@/components/Classification"; // Componente que exibe resultados de classificação
 import { classificationProps } from "@/components/Classification"; // Tipagem para resultados de classificação
+import CameraMed from "@/components/Camera";
 
 // Componente principal da tela
 export default function Index() {
@@ -86,7 +87,7 @@ export default function Index() {
         <View style={styles.container}>
             {/* Configuração da barra de status */}
             <StatusBar translucent={true} style="dark" />
-
+            <CameraMed></CameraMed>
             {/* Exibe a imagem selecionada ou uma imagem padrão */}
             <Image 
                 source={{ uri: uriImagemSelecionada ? uriImagemSelecionada : "https://encurtador.com.br/Yd2Jg" }} 
