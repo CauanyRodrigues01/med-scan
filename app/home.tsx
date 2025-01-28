@@ -1,8 +1,8 @@
 // Importa módulos e bibliotecas necessárias
-import { Image } from "expo-image";
-import { useState } from "react"; // Hook para gerenciar estados no React
+import { useState, useEffect, useRef } from "react"; // Hook para gerenciar estados no React
+import { CameraView } from "expo-camera";
 import { StatusBar } from "expo-status-bar"; // Gerencia a barra de status no aplicativo
-import { View, ActivityIndicator } from "react-native"; // Componentes básicos do React Native
+import { View, ActivityIndicator, Image } from "react-native"; // Componentes básicos do React Native
 import * as ImagePicker from "expo-image-picker"; // Biblioteca para selecionar imagens da galeria ou capturar fotos
 import * as FileSystem from "expo-file-system"; // Biblioteca para manipulação de arquivos no Expo
 
@@ -23,6 +23,11 @@ export default function Index() {
     const [uriImagemSelecionada, setUriImagemSelecionada] = useState(""); // URI da imagem selecionada
     const [isCarregando, setIsCarregando] = useState(false); // Flag para exibir indicador de carregamento
     const [resultados, setResultados] = useState<classificationProps[]>([]); // Resultados da classificação
+    
+    // Referência para a câmera
+    const cameraRef = useRef<CameraView>();
+
+    cameraRef
 
     // Função para lidar com a seleção de uma imagem
     async function lidarComSelecaoDeImagem() {
