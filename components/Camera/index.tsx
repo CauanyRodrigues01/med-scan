@@ -25,7 +25,7 @@ import {
 
 import { Ionicons } from "@expo/vector-icons"; // Ícones da biblioteca Ionicons
 
-import { router } from "expo-router"; 
+import { router } from "expo-router";
 
 import * as MediaLibrary from "expo-media-library"; // Gerencia a galeria de mídia
 
@@ -44,7 +44,7 @@ const PermissionRequest = ({ requestPermission }) => (
 // Componente para visualizar a foto capturada
 const PhotoPreview = ({ photoUri, cancelPhoto, savePhoto }) => (
   <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-    <Image source={{ uri: photoUri }} style={{ width: "100%", height: "80%" }} />
+    <Image source={{ uri: photoUri }} style={{ width: "100%", height: "80%", backgroundColor: "red" }} />
     {/* Botões para cancelar ou salvar a foto */}
     <View
       style={{
@@ -67,25 +67,26 @@ const PhotoPreview = ({ photoUri, cancelPhoto, savePhoto }) => (
 // Controles para a câmera (trocar câmera, flash e tirar foto)
 const CameraControls = ({
   toggleCameraFacing,
+  exitCamera,
   toggleTorch,
   takePicture,
 }) => (
-  <View
-    style={{
-      flexDirection: "row",
-      justifyContent: "space-around",
-      alignItems: "flex-end",
-      marginBottom: 30,
-    }}
-  >
-    <TouchableOpacity onPress={toggleCameraFacing}>
-      <Ionicons name="camera-reverse" size={40} color="white" />
+  <View style={styles.buttonContainer}>
+    {/* Botão para alternar entre câmera frontal e traseira */}
+    <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
+      <Ionicons name="repeat-outline" size={32} color="green" />
     </TouchableOpacity>
-    <TouchableOpacity onPress={toggleTorch}>
-      <Ionicons name="flashlight" size={40} color="white" />
+    {/* Botão para sair da câmera */}
+    <TouchableOpacity style={styles.button} onPress={exitCamera} >
+      <Ionicons name="close-outline" size={32} color="green" />
     </TouchableOpacity>
-    <TouchableOpacity onPress={takePicture}>
-      <Ionicons name="camera" size={40} color="white" />
+    {/* Botão para alternar flash */}
+    <TouchableOpacity style={styles.button} onPress={toggleTorch} >
+      <Ionicons name="flashlight" size={32} color="green" />
+    </TouchableOpacity>
+    {/* Botão para capturar a foto */}
+    <TouchableOpacity style={styles.button} onPress={takePicture} >
+      <Ionicons name="camera" size={32} color="green" />
     </TouchableOpacity>
   </View>
 );
@@ -103,11 +104,12 @@ const saveFileToGallery = async (fileUri) => {
 
     // Cria um ativo na galeria e o adiciona ao álbum "DCIM"
     const asset = await MediaLibrary.createAssetAsync(fileUri);
-    const album = await MediaLibrary.getAlbumAsync("DCIM");
+    const album = await MediaLibrary.getAlbumAsync("MedScan"); // Ou "Camera" em alguns dispositivos
+    console.log("const album = await MediaLibrary.getAlbumAsync(DCIM); ");
     if (album) {
       await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
     } else {
-      await MediaLibrary.createAlbumAsync("DCIM", asset, false);
+      await MediaLibrary.createAlbumAsync("MedScan", asset, false);
     }
 
     console.log("Photo saved to gallery:", asset.uri);
@@ -159,7 +161,8 @@ export default function CameraMed() {
         console.log("Photo captured:", photo);
         const galleryUri = await saveFileToGallery(photo.uri); // Salva a foto na galeria
         if (galleryUri) {
-          setPhotoUri(galleryUri); // Atualiza o estado com a URI da foto salva
+          setPhotoUri(photo.uri); // Atualiza o estado com a URI da foto salva
+          console.log(galleryUri);
         }
       } catch (error) {
         console.error("Error taking photo:", error);
@@ -195,6 +198,9 @@ export default function CameraMed() {
     }
   };
 
+  //Sai da camera
+  const exitCamera = () => setModalIsVisible(false);
+
   // Alterna o estado do flash (torch)
   const toggleTorch = () => setTorch((prev) => !prev);
 
@@ -226,6 +232,7 @@ export default function CameraMed() {
             type={facing} // Define câmera frontal ou traseira
             // Esse código reclama porque está usando o nativowind para aplicar classes semelhantes ao tailwind no estilo de mapeamento de componente nativo ao nome da classe 
             flashMode={torch ? "torch" : "off"} // Controle do flash
+            mirror={facing === 'front'}
             ref={cameraRef} // Define a referência
           >
             {/* Exibe indicador de carregamento enquanto a foto é capturada */}
@@ -241,24 +248,12 @@ export default function CameraMed() {
                 <ActivityIndicator size="large" color="white" />
               </View>
             )}
-            <View style={styles.buttonContainer}>
-              {/* Botão para alternar entre câmera frontal e traseira */}
-              <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
-                <Ionicons name="repeat-outline" size={32} color="green" />
-              </TouchableOpacity>
-              {/* Botão para sair da câmera */}
-              <TouchableOpacity style={styles.button} onPress={() => setModalIsVisible(false)} >
-                <Ionicons name="close-outline" size={32} color="green" />
-              </TouchableOpacity>
-              {/* Botão para alternar flash */}
-              <TouchableOpacity style={styles.button} onPress={toggleTorch} >
-                <Ionicons name="flashlight" size={32} color="green" />
-              </TouchableOpacity>
-              {/* Botão para capturar a foto */}
-              <TouchableOpacity style={styles.button} onPress={takePicture} >
-                <Ionicons name="camera" size={32} color="green" />
-              </TouchableOpacity>
-            </View>
+            <CameraControls
+              toggleCameraFacing={toggleCameraFacing}
+              exitCamera={exitCamera}
+              toggleTorch={toggleTorch}
+              takePicture={takePicture}
+            />
           </CameraView>
         )}
       </Modal>
