@@ -3,12 +3,11 @@ import {
   CameraView,
   CameraType,
   useCameraPermissions,
-  FlashMode
+  //FlashMode
 } from 'expo-camera';
 
 import {
   useState,
-  useCallback,
   useRef
 } from 'react';
 
@@ -17,93 +16,17 @@ import {
   Modal,
   StyleSheet,
   TouchableOpacity,
-  View,
-  ActivityIndicator, // Indicador de carregamento
-  Button,
-  Image,
-  Text,
+  View
 } from 'react-native';
 
 import { Ionicons } from "@expo/vector-icons"; // Ícones da biblioteca Ionicons
 
-import { router } from "expo-router";
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from "expo-media-library"; // Gerencia a galeria de mídia
+import { LoadingOverlay } from '../LoadingOverlay';
+import { PhotoPreview } from '../PhotoPreview';
+import { CameraControls } from '../CameraControls';
 
-/* COMPONENTES */
-
-// Componente de sobreposição de carregamento
-const LoadingOverlay = ({ visible }) => {
-  if (!visible) return null;
-  return (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="white" />
-    </View>
-  );
-};
-
-// Componente para visualizar a foto capturada
-const PhotoPreview = ({ photoUri, cancelPhoto, savePhoto }) => (
-  <View style={styles.previewContainer}>
-    <Image source={{ uri: photoUri }} style={styles.previewImage} />
-    <View style={styles.previewButtons}>
-      <TouchableOpacity onPress={cancelPhoto}>
-        <Ionicons name="close-circle" size={50} color="red" />
-      </TouchableOpacity>
-      <TouchableOpacity onPress={savePhoto}>
-        <Ionicons name="checkmark-circle" size={50} color="green" />
-      </TouchableOpacity>
-    </View>
-  </View>
-);
-
-// Controles para a câmera
-const CameraControls = ({ toggleCameraFacing, exitCamera, takePicture }) => (
-  <View style={styles.buttonContainer}>
-    <View style={styles.buttonTop}>
-      <TouchableOpacity style={styles.button} onPress={exitCamera}>
-        <Ionicons name="arrow-back-outline" size={32} color="white" />
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
-        <Ionicons name="repeat-outline" size={32} color="white" />
-      </TouchableOpacity>
-    </View>
-
-    <View style={styles.buttonBottom}>
-      <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-        <Ionicons name="ellipse" size={90} color="white" />
-      </TouchableOpacity>
-    </View>
-  </View>
-);
-
-
-
-// Solicita permissão para usar a câmera
-/*
-const PermissionRequest = ({ requestPermission }) => (
-  <View style={{ flex: 1, justifyContent: "center" }}>
-    <Text style={{ textAlign: "center", paddingBottom: 10 }}>
-      We need your permission to show the camera
-    </Text>
-    <Button onPress={requestPermission} title="Grant Permission" />
-  </View>
-);
-
-*/
-
-
-/* FUNÇÕES UTILITÁRIAS */
-
-// Exclui a foto temporária se a permissão for negada
-const deleteTemporaryPhoto = async (uri) => {
-  try {
-    await FileSystem.deleteAsync(uri);
-    console.log("🗑️ Foto temporária excluída:", uri);
-  } catch (error) {
-    console.error("❌ Erro ao excluir foto temporária:", error);
-  }
-};
 /* COMPONENTE PRINCIPAL */
 export default function CameraMed() {
   const [facing, setFacing] = useState<CameraType>("back");
@@ -112,8 +35,8 @@ export default function CameraMed() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const [modalIsVisible, setModalIsVisible] = useState(false);
-  //const [torch, setTorch] = useState<FlashMode>("off");
 
+  //const [torch, setTorch] = useState<FlashMode>("off");
   // Alterna o estado do flash (torch)
   /*
   const toggleTorch = () => {
@@ -133,6 +56,16 @@ export default function CameraMed() {
       console.log(error);
     }
   }
+
+  // Exclui a foto temporária se a permissão for negada
+  const deleteTemporaryPhoto = async (uri) => {
+    try {
+      await FileSystem.deleteAsync(uri);
+      console.log("🗑️ Foto temporária excluída:", uri);
+    } catch (error) {
+      console.error("❌ Erro ao excluir foto temporária:", error);
+    }
+  };
 
   // Fecha a câmera
   function exitCamera() {
@@ -169,7 +102,7 @@ export default function CameraMed() {
       console.log("⚠️ Nenhuma foto disponível para salvar.");
       return;
     }
-  
+
     setLoading(true);
     try {
       const hasPermission = await checkPermissions();
@@ -178,7 +111,7 @@ export default function CameraMed() {
         await deleteTemporaryPhoto(photoUri);
         return;
       }
-  
+
       const galleryUri = await saveFileToGallery(photoUri);
       if (galleryUri) {
         console.log("✅ Foto confirmada e salva na galeria:", galleryUri);
@@ -203,20 +136,20 @@ export default function CameraMed() {
         console.error("❌ Arquivo não encontrado:", uri);
         return null;
       }
-  
+
       console.log("📌 Solicitando permissão...");
       const { status } = await MediaLibrary.requestPermissionsAsync();
       console.log("📌 Status da permissão após solicitação:", status);
-  
+
       if (status !== "granted") {
         console.warn("⚠️ Permissão negada. Foto não será salva.");
         return null;
       }
-  
+
       console.log("📌 Criando asset...");
       const asset = await MediaLibrary.createAssetAsync(uri);
       console.log("📌 Asset criado:", asset.uri);
-  
+
       const album = await MediaLibrary.getAlbumAsync("MedScan");
       if (album) {
         await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
@@ -225,7 +158,7 @@ export default function CameraMed() {
         await MediaLibrary.createAlbumAsync("MedScan", asset, false);
         console.log("✅ Álbum criado e foto salva.");
       }
-  
+
       return asset.uri;
     } catch (error) {
       console.error("❌ Erro ao salvar foto na galeria:", error);
@@ -314,47 +247,5 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 10,
-  },
-  loadingContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  previewContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: "#000"
-  },
-  previewImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    justifyContent: 'space-between'
-  },
-  previewButtons: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-evenly'
-  },
-  buttonContainer: {
-    flex: 1,
-    justifyContent: 'space-between',
-    margin: 30
-  },
-  buttonTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between'
-  },
-  buttonBottom: {
-    flexDirection: 'row',
-    justifyContent: 'center'
-  },
-  button: {
-    padding: 10,
-  },
-  captureButton: {
-    padding: 20,
-  },
+  }
 });
