@@ -26,11 +26,15 @@ import * as MediaLibrary from "expo-media-library"; // Gerencia a galeria de mí
 import { LoadingOverlay } from '../LoadingOverlay';
 import { PhotoPreview } from '../PhotoPreview';
 import { CameraControls } from '../CameraControls';
+import { styles } from './styles';
 
-/* COMPONENTE PRINCIPAL */
-export default function CameraMed() {
+type CameraMedProps = {
+  onPhotoCaptured: (uri: string) => void; // Declaração da prop
+};
+
+export default function CameraMed({ onPhotoCaptured }: CameraMedProps) {
   const [facing, setFacing] = useState<CameraType>("back");
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [uriImagemCamera, setUriImagemCamera] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -70,7 +74,7 @@ export default function CameraMed() {
   // Fecha a câmera
   function exitCamera() {
     setModalIsVisible(false);
-    setPhotoUri(null);
+    setUriImagemCamera(null);
   }
 
   const checkPermissions = async () => {
@@ -88,7 +92,7 @@ export default function CameraMed() {
       const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
       console.log("📸 Foto capturada:", photo.uri);
 
-      setPhotoUri(photo.uri); // Apenas armazena o URI da foto
+      setUriImagemCamera(photo.uri); // Apenas armazena o URI da foto
     } catch (error) {
       console.error("❌ Erro ao tirar foto:", error);
     } finally {
@@ -98,7 +102,7 @@ export default function CameraMed() {
 
   // Salva a foto na galeria quando o usuário confirma
   const savePhoto = async () => {
-    if (!photoUri) {
+    if (!uriImagemCamera) {
       console.log("⚠️ Nenhuma foto disponível para salvar.");
       return;
     }
@@ -108,18 +112,21 @@ export default function CameraMed() {
       const hasPermission = await checkPermissions();
       if (!hasPermission) {
         console.warn("⚠️ Permissão para acessar a galeria não concedida. Foto não salva.");
-        await deleteTemporaryPhoto(photoUri);
+        await deleteTemporaryPhoto(uriImagemCamera);
         return;
       }
 
-      const galleryUri = await saveFileToGallery(photoUri);
+      const galleryUri = await saveFileToGallery(uriImagemCamera);
       if (galleryUri) {
         console.log("✅ Foto confirmada e salva na galeria:", galleryUri);
-        setPhotoUri(null);
+        setUriImagemCamera(null);
+        onPhotoCaptured(uriImagemCamera); // Atualiza o estado em home.tsx
+        console.log("URI sendo passada pelo promp");
         exitCamera();
+        console.log("Saindo da camera");
       } else {
         console.warn("⚠️ A foto não foi salva na galeria.");
-        await deleteTemporaryPhoto(photoUri);
+        await deleteTemporaryPhoto(uriImagemCamera);
       }
     } catch (error) {
       console.error("❌ Erro ao salvar a foto:", error);
@@ -166,27 +173,6 @@ export default function CameraMed() {
     }
   };
 
-  // Função para capturar foto
-  /*const takePicture = useCallback(async (cameraRef, setPhotoUri, setLoading) => {
-    if (!cameraRef.current) return;
-
-    setLoading(true); // Ativa o indicador de carregamento
-    try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
-      console.log("Photo captured:", photo);
-
-      const galleryUri = await saveFileToGallery(photo.uri);
-      if (galleryUri) {
-        setPhotoUri(photo.uri);
-        console.log(galleryUri);
-      }
-    } catch (error) {
-      console.error("Error taking photo:", error);
-    } finally {
-      setLoading(false); // Desativa o indicador de carregamento
-    }
-  }, []);*/
-
   // Alterna entre câmera frontal e traseira
   function toggleCameraFacing() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
@@ -194,7 +180,7 @@ export default function CameraMed() {
 
   // Cancela a foto e volta para a câmera
   const cancelPhoto = () => {
-    setPhotoUri(null);
+    setUriImagemCamera(null);
   };
 
   // Renderiza a interface do usuário
@@ -208,9 +194,9 @@ export default function CameraMed() {
       <Modal visible={modalIsVisible} style={{ flex: 1 }}>
         {/* Se uma foto foi capturada, exibe o preview */}
         {loading && <LoadingOverlay visible={loading} />}
-        {photoUri ? (
+        {uriImagemCamera ? (
           <PhotoPreview
-            photoUri={photoUri}
+            photoUri={uriImagemCamera}
             cancelPhoto={cancelPhoto}
             savePhoto={savePhoto}
           />
@@ -237,15 +223,3 @@ export default function CameraMed() {
     </View>
   );
 }
-
-// Estilização do componente
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconButton: {
-    padding: 10,
-  }
-});
