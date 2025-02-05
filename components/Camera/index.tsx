@@ -28,11 +28,12 @@ import { PhotoPreview } from '../PhotoPreview';
 import { CameraControls } from '../CameraControls';
 import { styles } from './styles';
 
-type CameraMedProps = {
-  onPhotoCaptured: (uri: string) => void; // Declaração da prop
-};
+//type CameraMedProps = {
+//  onPhotoCaptured: (uri: string) => void; // Declaração da prop
+//};
+//export default function CameraMed({ onPhotoCaptured }: CameraMedProps) {
 
-export default function CameraMed({ onPhotoCaptured }: CameraMedProps) {
+export default function CameraMed() {
   const [facing, setFacing] = useState<CameraType>("back");
   const [uriImagemCamera, setUriImagemCamera] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -120,7 +121,7 @@ export default function CameraMed({ onPhotoCaptured }: CameraMedProps) {
       if (galleryUri) {
         console.log("✅ Foto confirmada e salva na galeria:", galleryUri);
         setUriImagemCamera(null);
-        onPhotoCaptured(uriImagemCamera); // Atualiza o estado em home.tsx
+        //onPhotoCaptured(uriImagemCamera); // Atualiza o estado em home.tsx
         console.log("URI sendo passada pelo promp");
         exitCamera();
         console.log("Saindo da camera");

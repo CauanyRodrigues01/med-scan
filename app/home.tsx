@@ -20,15 +20,19 @@ import CameraMed from "@/components/Camera";
 // Componente principal da tela
 export default function Index() {
     // Estados para controlar o comportamento da aplicação
-    const [uriImagemGaleria, setUriImagemGaleria] = useState(null);
-    const [uriImagemCamera, setUriImagemCamera] = useState(null);
+    const [uriImagemSelecionada, setUriImagemSelecionada] = useState(""); // URI da imagem selecionada
     const [isCarregando, setIsCarregando] = useState(false); // Flag para exibir indicador de carregamento
     const [resultados, setResultados] = useState<classificationProps[]>([]); // Resultados da classificação
+    
+    // Referência para a câmera
+    const cameraRef = useRef<CameraView>();
+
+    cameraRef
 
     // Função para lidar com a seleção de uma imagem
     async function lidarComSelecaoDeImagem() {
         setIsCarregando(true); // Ativa o indicador de carregamento
-
+        
         try {
             // Abre a galeria para selecionar uma imagem
             const resultado = await ImagePicker.launchImageLibraryAsync({
@@ -41,7 +45,7 @@ export default function Index() {
             // Verifica se o usuário não cancelou a seleção
             if (!resultado.canceled) {
                 const { uri } = resultado.assets[0]; // Obtém o URI da imagem selecionada
-                setUriImagemGaleria(uri); // Salva o URI no estado
+                setUriImagemSelecionada(uri); // Salva o URI no estado
                 await classificacaoDeImagem(uri); // Classifica a imagem selecionada
             }
 
@@ -88,10 +92,11 @@ export default function Index() {
         <View style={styles.container}>
             {/* Configuração da barra de status */}
             <StatusBar translucent={true} style="dark" />
+            <CameraMed></CameraMed>
             {/* Exibe a imagem selecionada ou uma imagem padrão */}
-            <Image
-                source={{ uri: uriImagemCamera || uriImagemGaleria || "https://encurtador.com.br/Yd2Jg" }} 
-                style={styles.image}
+            <Image 
+                source={{ uri: uriImagemSelecionada ? uriImagemSelecionada : "https://encurtador.com.br/Yd2Jg" }} 
+                style={styles.image} 
             />
 
             {/* Exibe os resultados de classificação */}
@@ -102,11 +107,10 @@ export default function Index() {
             </View>
 
             {/* Exibe o indicador de carregamento ou o botão para selecionar imagem */}
-            {isCarregando
+            {isCarregando 
                 ? <ActivityIndicator color="#5f1bbf" /> // Indicador de carregamento
                 : <Button title="Selecionar imagem" onPress={lidarComSelecaoDeImagem} /> // Botão de seleção
             }
-            <CameraMed onPhotoCaptured={setUriImagemCamera} />
         </View>
     );
 }
