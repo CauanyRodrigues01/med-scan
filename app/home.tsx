@@ -1,8 +1,8 @@
 // Importa módulos e bibliotecas necessárias
 import { useState, useEffect, useRef } from "react"; // Hook para gerenciar estados no React
-import { CameraView } from "expo-camera";
+import { CameraView, CameraType, useCameraPermissions, } from "expo-camera";
 import { StatusBar } from "expo-status-bar"; // Gerencia a barra de status no aplicativo
-import { View, ActivityIndicator, Image } from "react-native"; // Componentes básicos do React Native
+import { View, ActivityIndicator, Image, Alert, Modal, } from "react-native"; // Componentes básicos do React Native
 import * as ImagePicker from "expo-image-picker"; // Biblioteca para selecionar imagens da galeria ou capturar fotos
 import * as FileSystem from "expo-file-system"; // Biblioteca para manipulação de arquivos no Expo
 
@@ -15,7 +15,11 @@ import { Button } from "@/components/button"; // Botão personalizado
 import { styles } from "@/styles/styleHome"; // Estilos específicos para a página
 import { Classification } from "@/components/Classification"; // Componente que exibe resultados de classificação
 import { classificationProps } from "@/components/Classification"; // Tipagem para resultados de classificação
-import CameraMed from "@/components/Camera";
+import * as MediaLibrary from "expo-media-library"; // Gerencia a galeria de mídia
+import React from "react";
+import { CameraControls } from "@/components/CameraControls";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { PhotoPreview } from "@/components/PhotoPreview";
 
 // Componente principal da tela
 export default function Index() {
@@ -23,16 +27,162 @@ export default function Index() {
     const [uriImagemSelecionada, setUriImagemSelecionada] = useState(""); // URI da imagem selecionada
     const [isCarregando, setIsCarregando] = useState(false); // Flag para exibir indicador de carregamento
     const [resultados, setResultados] = useState<classificationProps[]>([]); // Resultados da classificação
-    
-    // Referência para a câmera
-    const cameraRef = useRef<CameraView>();
 
-    cameraRef
+    const [facing, setFacing] = useState<CameraType>("back");
+    const [uriImagemCamera, setUriImagemCamera] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [permission, requestPermission] = useCameraPermissions();
+    const cameraRef = useRef<CameraView>(null);
+    const [modalIsVisible, setModalIsVisible] = useState(false);
+
+    //const [torch, setTorch] = useState<FlashMode>("off");
+    // Alterna o estado do flash (torch)
+    /*
+    const toggleTorch = () => {
+      setTorch((prev) => (prev === "off" ? "on" : "off"));
+    };
+    */
+
+    // Abre a câmera solicitando permissão
+    async function handleOpenCamera() {
+        try {
+            const { granted } = await requestPermission();
+            if (!granted) {
+                return Alert.alert("Câmera", "Você precisa habilitar o uso da câmera.");
+            }
+            setModalIsVisible(true);
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    // Exclui a foto temporária se a permissão for negada
+    const deleteTemporaryPhoto = async (uri) => {
+        try {
+            await FileSystem.deleteAsync(uri);
+            console.log("🗑️ Foto temporária excluída:", uri);
+        } catch (error) {
+            console.error("❌ Erro ao excluir foto temporária:", error);
+        }
+    };
+
+    // Fecha a câmera
+    function exitCamera() {
+        setModalIsVisible(false);
+        setUriImagemCamera(null);
+    }
+
+    const checkPermissions = async () => {
+        const { status } = await MediaLibrary.getPermissionsAsync();
+        console.log("📌 Permissão atual:", status);
+        return status === "granted";
+    };
+
+    // Captura a foto sem salvar automaticamente na galeria
+    const takePicture = async () => {
+        if (!cameraRef.current) return;
+
+        setLoading(true);
+        try {
+            const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
+            console.log("📸 Foto capturada:", photo.uri);
+
+            setUriImagemCamera(photo.uri); // Apenas armazena o URI da foto
+            setUriImagemSelecionada(photo.uri);
+            classificacaoDeImagem(photo.uri); // Classifica a imagem selecionada
+        } catch (error) {
+            console.error("❌ Erro ao tirar foto:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Salva a foto na galeria quando o usuário confirma
+    const savePhoto = async () => {
+        if (!uriImagemCamera) {
+            console.log("⚠️ Nenhuma foto disponível para salvar.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const hasPermission = await checkPermissions();
+            if (!hasPermission) {
+                console.warn("⚠️ Permissão para acessar a galeria não concedida. Foto não salva.");
+                await deleteTemporaryPhoto(uriImagemCamera);
+                return;
+            }
+
+            const galleryUri = await saveFileToGallery(uriImagemCamera);
+            if (galleryUri) {
+                console.log("✅ Foto confirmada e salva na galeria:", galleryUri);
+                setUriImagemCamera(null);
+                //onPhotoCaptured(uriImagemCamera); // Atualiza o estado em home.tsx
+                exitCamera();
+                console.log("Saindo da camera");
+            } else {
+                console.warn("⚠️ A foto não foi salva na galeria.");
+                await deleteTemporaryPhoto(uriImagemCamera);
+            }
+        } catch (error) {
+            console.error("❌ Erro ao salvar a foto:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Função para salvar o arquivo na galeria
+    const saveFileToGallery = async (uri) => {
+        try {
+            const fileInfo = await FileSystem.getInfoAsync(uri);
+            if (!fileInfo.exists) {
+                console.error("❌ Arquivo não encontrado:", uri);
+                return null;
+            }
+
+            console.log("📌 Solicitando permissão...");
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            console.log("📌 Status da permissão após solicitação:", status);
+
+            if (status !== "granted") {
+                console.warn("⚠️ Permissão negada. Foto não será salva.");
+                return null;
+            }
+
+            console.log("📌 Criando asset...");
+            const asset = await MediaLibrary.createAssetAsync(uri);
+            console.log("📌 Asset criado:", asset.uri);
+
+            const album = await MediaLibrary.getAlbumAsync("MedScan");
+            if (album) {
+                await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+                console.log("✅ Foto adicionada ao álbum existente.");
+            } else {
+                await MediaLibrary.createAlbumAsync("MedScan", asset, false);
+                console.log("✅ Álbum criado e foto salva.");
+            }
+
+            return asset.uri;
+        } catch (error) {
+            console.error("❌ Erro ao salvar foto na galeria:", error);
+            return null;
+        }
+    };
+
+    // Alterna entre câmera frontal e traseira
+    function toggleCameraFacing() {
+        setFacing(current => (current === 'back' ? 'front' : 'back'));
+    }
+
+    // Cancela a foto e volta para a câmera
+    const cancelPhoto = () => {
+        setUriImagemCamera(null);
+    };
 
     // Função para lidar com a seleção de uma imagem
     async function lidarComSelecaoDeImagem() {
         setIsCarregando(true); // Ativa o indicador de carregamento
-        
+
         try {
             // Abre a galeria para selecionar uma imagem
             const resultado = await ImagePicker.launchImageLibraryAsync({
@@ -92,11 +242,10 @@ export default function Index() {
         <View style={styles.container}>
             {/* Configuração da barra de status */}
             <StatusBar translucent={true} style="dark" />
-            <CameraMed></CameraMed>
             {/* Exibe a imagem selecionada ou uma imagem padrão */}
-            <Image 
-                source={{ uri: uriImagemSelecionada ? uriImagemSelecionada : "https://encurtador.com.br/Yd2Jg" }} 
-                style={styles.image} 
+            <Image
+                source={{ uri: uriImagemSelecionada ? uriImagemSelecionada : "https://encurtador.com.br/Yd2Jg" }}
+                style={styles.image}
             />
 
             {/* Exibe os resultados de classificação */}
@@ -107,10 +256,45 @@ export default function Index() {
             </View>
 
             {/* Exibe o indicador de carregamento ou o botão para selecionar imagem */}
-            {isCarregando 
-                ? <ActivityIndicator color="#5f1bbf" /> // Indicador de carregamento
-                : <Button title="Selecionar imagem" onPress={lidarComSelecaoDeImagem} /> // Botão de seleção
-            }
+            {isCarregando ? (
+                <ActivityIndicator color="#5f1bbf" />
+            ) : (
+                <>
+                    <Button title="Selecionar imagem" onPress={lidarComSelecaoDeImagem} />
+                    <Button title="Tirar Foto" onPress={handleOpenCamera} />
+                </>
+            )}
+
+            <Modal visible={modalIsVisible} style={{ flex: 1 }}>
+                {/* Se uma foto foi capturada, exibe o preview */}
+                {loading && <LoadingOverlay visible={loading} />}
+                {uriImagemCamera ? (
+                    <PhotoPreview
+                        photoUri={uriImagemCamera}
+                        cancelPhoto={cancelPhoto}
+                        savePhoto={savePhoto}
+                    />
+                ) : (
+                    // Exibe a câmera
+                    <CameraView
+                        ref={cameraRef} // Define a referência
+                        style={{ flex: 1 }}
+                        facing={facing}
+                        //flashMode={torch} // Controle do flash
+                        mirror={facing === 'front'}
+
+                    >
+                        {/* Exibe indicador de carregamento enquanto a foto é capturada */}
+                        <LoadingOverlay visible={loading} />
+                        <CameraControls
+                            toggleCameraFacing={toggleCameraFacing}
+                            exitCamera={exitCamera}
+                            takePicture={takePicture}
+                        />
+                    </CameraView>
+                )}
+            </Modal>
+
         </View>
     );
 }
