@@ -57,7 +57,7 @@ export default function Index() {
     }
 
     // Exclui a foto temporária se a permissão for negada
-    const deleteTemporaryPhoto = async (uri) => {
+    async function deleteTemporaryPhoto(uri) {
         try {
             await FileSystem.deleteAsync(uri);
             console.log("🗑️ Foto temporária excluída:", uri);
@@ -72,14 +72,14 @@ export default function Index() {
         setUriImagemCamera(null);
     }
 
-    const checkPermissions = async () => {
+    async function checkPermissions() {
         const { status } = await MediaLibrary.getPermissionsAsync();
         console.log("📌 Permissão atual:", status);
         return status === "granted";
     };
 
     // Captura a foto sem salvar automaticamente na galeria
-    const takePicture = async () => {
+    async function takePicture() {
         if (!cameraRef.current) return;
 
         setLoading(true);
@@ -98,7 +98,7 @@ export default function Index() {
     };
 
     // Salva a foto na galeria quando o usuário confirma
-    const savePhoto = async () => {
+    async function savePhoto() {
         if (!uriImagemCamera) {
             console.log("⚠️ Nenhuma foto disponível para salvar.");
             return;
@@ -132,7 +132,7 @@ export default function Index() {
     };
 
     // Função para salvar o arquivo na galeria
-    const saveFileToGallery = async (uri) => {
+    async function saveFileToGallery(uri) {
         try {
             const fileInfo = await FileSystem.getInfoAsync(uri);
             if (!fileInfo.exists) {
@@ -175,7 +175,7 @@ export default function Index() {
     }
 
     // Cancela a foto e volta para a câmera
-    const cancelPhoto = () => {
+    async function cancelPhoto() {
         setUriImagemCamera(null);
     };
 
