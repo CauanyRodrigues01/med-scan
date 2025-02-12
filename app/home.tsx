@@ -22,41 +22,42 @@ export default function Index() {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
 
-  // Abre a câmera solicitando permissão
   async function handleOpenCamera() {
-    const { granted } = await requestCameraPermission();
-    if (!granted) return Alert.alert("Câmera", "Permissão necessária.");
-    setModalVisible(true);
+    try {
+      const { granted } = await requestCameraPermission();
+      if (!granted) throw new Error("Permissão da câmera negada");
+      setModalVisible(true);
+    } catch (error) {
+      console.error("Erro ao abrir câmera:", error);
+      Alert.alert("Erro", "Não foi possível acessar a câmera.");
+    }
   }
 
-  // Fecha a câmera
   function closeCamera() {
     setModalVisible(false);
   }
 
-  // Captura a foto 
   async function takePicture() {
     if (!cameraRef.current) return;
-
     setLoading(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
+      console.log("Foto capturada:", photo.uri);
       setImageUri(photo.uri);
       setModalVisible(false);
       await classifyImage(photo.uri);
     } catch (error) {
       console.error("Erro ao tirar foto:", error);
+      Alert.alert("Erro", "Falha ao capturar a foto.");
     } finally {
       setLoading(false);
     }
   }
 
-  // Alterna entre câmera frontal e traseira
   function toggleCameraFacing() {
     setFacing((prev) => (prev === "back" ? "front" : "back"));
   }
 
-  // Função para lidar com a seleção de uma imagem direto da galeria
   async function handleImageSelection() {
     setLoading(true);
     try {
@@ -66,58 +67,58 @@ export default function Index() {
         aspect: [4, 4],
         quality: 1,
       });
-      if (!result.canceled) {
-        const { uri } = result.assets[0];
-        setImageUri(uri);
-        await classifyImage(uri);
-      }
+      if (result.canceled) return;
+      const { uri } = result.assets[0];
+      console.log("Imagem selecionada:", uri);
+      setImageUri(uri);
+      await classifyImage(uri);
     } catch (error) {
-      console.error(error);
+      console.error("Erro ao selecionar imagem:", error);
+      Alert.alert("Erro", "Não foi possível selecionar a imagem.");
     } finally {
       setLoading(false);
     }
   }
 
-  // Função para classificar a imagem
   async function classifyImage(uri: string) {
-    setResults([]); // Limpa resultados anteriores
-    await tensorFlow.ready(); // Garante que o TensorFlow está pronto para uso
-    const model = await mobilenet.load(); // Carrega o modelo MobileNet
-    // Lê a imagem como uma string base64
-    const imageBase64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    // Converte a string base64 em um buffer de bytes
-    const buffer = tensorFlow.util.encodeString(imageBase64, "base64").buffer;
-    const raw = new Uint8Array(buffer); // Cria um array de bytes não processados
-    const tensorImage = decodeJpeg(raw); // Decodifica a imagem em um tensor
-    const resizedTensor = tensorFlow.image.resizeBilinear(tensorImage, [224, 224], true); // Redimensiona a imagem para 224x224 pixels
-    const tensorNormalized = resizedTensor.div(255.0); // Normaliza os valores dos pixels para o intervalo [0, 1]
-    const result = await model.classify(tensorNormalized as tensorFlow.Tensor3D);
-    setResults(result);
+    try {
+      setResults([]);
+      await tensorFlow.ready();
+      const model = await mobilenet.load();
+      console.log("Modelo MobileNet carregado");
+      const imageBase64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const buffer = tensorFlow.util.encodeString(imageBase64, "base64").buffer;
+      const raw = new Uint8Array(buffer);
+      const tensorImage = decodeJpeg(raw);
+      const resizedTensor = tensorFlow.image.resizeBilinear(tensorImage, [224, 224], true);
+      const tensorNormalized = resizedTensor.div(255.0);
+      const result = await model.classify(tensorNormalized as tensorFlow.Tensor3D);
+      console.log("Resultado da classificação:", result);
+      setResults(result);
+    } catch (error) {
+      console.error("Erro ao classificar imagem:", error);
+      Alert.alert("Erro", "Falha na classificação da imagem.");
+    }
   }
 
   return (
     <View style={styles.container}>
       <StatusBar translucent style="dark" />
-      {/* Exibe a imagem selecionada ou uma imagem padrão */}
       <Image source={{ uri: imageUri || "https://encurtador.com.br/Yd2Jg" }} style={styles.image} />
-      {/* Exibe os resultados de classificação */}
       <View style={styles.results}>
         {results.map((res) => (
           <Classification data={res} key={res.className} />
         ))}
       </View>
-      {/* Exibe o indicador de carregamento ou o botão para selecionar imagem */}
       {loading ? (
         <ActivityIndicator color="#5f1bbf" />
       ) : (
-        <>
-            <View style={{ width: "80%", flex: 1 }}>
-                <Button title="Selecionar Imagem" onPress={handleImageSelection} />
-                <Button title="Tirar Foto" onPress={handleOpenCamera} />
-            </View>
-        </>
+        <View style={{ width: "80%", flex: 1 }}>
+          <Button title="Selecionar Imagem" onPress={handleImageSelection} />
+          <Button title="Tirar Foto" onPress={handleOpenCamera} />
+        </View>
       )}
       <Modal visible={modalVisible} style={{ flex: 1 }}>
         <CameraView ref={cameraRef} style={{ flex: 1 }} facing={facing} mirror={facing === "front"}>
