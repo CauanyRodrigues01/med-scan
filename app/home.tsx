@@ -32,7 +32,6 @@ export default function Index() {
   // Fecha a câmera
   function closeCamera() {
     setModalVisible(false);
-    setImageUri("");
   }
 
   // Captura a foto 
@@ -62,7 +61,7 @@ export default function Index() {
     setLoading(true);
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 4],
         quality: 1,
@@ -114,8 +113,10 @@ export default function Index() {
         <ActivityIndicator color="#5f1bbf" />
       ) : (
         <>
-          <Button title="Selecionar Imagem" onPress={handleImageSelection} />
-          <Button title="Tirar Foto" onPress={handleOpenCamera} />
+            <View style={{ width: "80%", flex: 1 }}>
+                <Button title="Selecionar Imagem" onPress={handleImageSelection} />
+                <Button title="Tirar Foto" onPress={handleOpenCamera} />
+            </View>
         </>
       )}
       <Modal visible={modalVisible} style={{ flex: 1 }}>
